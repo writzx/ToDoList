@@ -44,7 +44,7 @@ public class ToDoTimeElement implements Parcelable {
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeLong(id);
         dest.writeString(title);
-        dest.writeString(time.toString());
+        dest.writeString(time.toString(MainActivity.timeFormat));
         dest.writeByte((byte) (done ? 1 : 0));
     }
 

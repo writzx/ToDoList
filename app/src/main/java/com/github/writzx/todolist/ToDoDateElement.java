@@ -49,7 +49,7 @@ public class ToDoDateElement implements Parcelable {
 
     @Override
     public void writeToParcel(Parcel dest, int flags) {
-        dest.writeString(date.toString());
+        dest.writeString(date.toString(MainActivity.dateFormat));
         dest.writeString(title);
         dest.writeArray(todos.toArray());
     }
