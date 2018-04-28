@@ -1,0 +1,15 @@
+<resources>
+    <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
+        <item name="colorPrimary">#8A2BE2</item>
+        <item name="colorPrimaryDark">#4B0082</item>
+        <item name="colorAccent">#FF4500</item>
+    </style>
+
+    <style name="DialogTheme" parent="Theme.AppCompat.Light.Dialog">
+        <item name="colorPrimary">#8A2BE2</item>
+        <item name="colorPrimaryDark">#4B0082</item>
+        <item name="colorAccent">#FF4500</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+
+</resources>
