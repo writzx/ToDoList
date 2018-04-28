@@ -15,7 +15,6 @@ import java.util.ArrayList;
 
 public class ToDoTimeAdapter extends ArrayAdapter<ToDoTimeElement> implements View.OnClickListener {
     int dpos;
-    Context context;
 
     private View.OnClickListener clickListener;
     private View.OnLongClickListener longClickListener;
@@ -38,7 +37,6 @@ public class ToDoTimeAdapter extends ArrayAdapter<ToDoTimeElement> implements Vi
 
     public ToDoTimeAdapter(int dpos, ArrayList<ToDoTimeElement> tTimeElements, Context context) {
         super(context, R.layout.todo_time_element, tTimeElements);
-        this.context = context;
         this.dpos = dpos;
     }
 

@@ -1,16 +1,17 @@
 package com.github.writzx.todolist;
 
 import android.content.Intent;
+import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.view.View;
 import android.widget.ListView;
 
 import org.joda.time.LocalDate;
 import org.joda.time.LocalTime;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -54,7 +55,7 @@ public class MainActivity extends AppCompatActivity {
 
         dateElements = new ArrayList<>(Arrays.asList(td1, td2));
 
-        adapter = new ToDoDateAdapter(dateElements, getApplicationContext());
+        adapter = new ToDoDateAdapter(dateElements, new WeakReference<>(getApplicationContext()));
         adapter.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {

@@ -2,8 +2,9 @@ package com.github.writzx.todolist;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.design.widget.Snackbar;
+import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -17,12 +18,21 @@ public class AddToDoTimeActivity extends AppCompatActivity {
     TimePicker timePicker;
     EditText taskBox;
     ImageButton cancelTimeBtn;
+    ImageButton deleteTimeBtn;
     ImageButton acceptTimeBtn;
 
     long id = -1;
     AbstractMap.SimpleEntry<Integer, Integer> indices = new AbstractMap.SimpleEntry<>(-1, -1);
 
     LocalTime selTime = LocalTime.now();
+
+    void initViews() {
+        timePicker = findViewById(R.id.timePicker);
+        taskBox = findViewById(R.id.taskBox);
+        cancelTimeBtn = findViewById(R.id.cancelTimeBtn);
+        deleteTimeBtn = findViewById(R.id.deleteTimeBtn);
+        acceptTimeBtn = findViewById(R.id.acceptTimeBtn);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,9 +45,6 @@ public class AddToDoTimeActivity extends AppCompatActivity {
         Bundle extras = getIntent().getExtras();
         if (extras != null) {
             indices = new AbstractMap.SimpleEntry<>(extras.getInt("todo_date_index", -1), extras.getInt("todo_time_index", -1));
-            if (indices.getKey() == -1) {
-                // todo only when new DateElement and TimeElement, this activity has to return the TimeElement
-            }
         }
 
         if (indices.getValue() != -1) {
@@ -57,6 +64,7 @@ public class AddToDoTimeActivity extends AppCompatActivity {
                 timePicker.setCurrentHour(selTime.getHourOfDay());
                 timePicker.setCurrentMinute(selTime.getMinuteOfHour());
             }
+            deleteTimeBtn.setVisibility(View.VISIBLE);
         }
 
         timePicker.setOnTimeChangedListener(new TimePicker.OnTimeChangedListener() {
@@ -77,7 +85,10 @@ public class AddToDoTimeActivity extends AppCompatActivity {
         acceptTimeBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                // todo error check
+                if (taskBox.getText().toString().trim().isEmpty()) {
+                    Snackbar.make(v, "ERROR: Enter a title...", Snackbar.LENGTH_LONG).show();
+                    return;
+                }
 
                 ToDoTimeElement tte = new ToDoTimeElement(taskBox.getText().toString(), selTime, false);
                 if (id != -1) {
@@ -101,12 +112,16 @@ public class AddToDoTimeActivity extends AppCompatActivity {
                 finish();
             }
         });
-    }
 
-    void initViews() {
-        timePicker = findViewById(R.id.timePicker);
-        taskBox = findViewById(R.id.taskBox);
-        cancelTimeBtn = findViewById(R.id.cancelTimeBtn);
-        acceptTimeBtn = findViewById(R.id.acceptTimeBtn);
+        deleteTimeBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent res_del = new Intent();
+                res_del.putExtra("todo_time_delete", indices.getValue());
+
+                setResult(Activity.RESULT_CANCELED, res_del);
+                finish();
+            }
+        });
     }
 }

@@ -5,27 +5,22 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.Intent;
-import android.os.Parcelable;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.design.widget.Snackbar;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewPropertyAnimator;
-import android.view.animation.Animation;
-import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 
+import java.lang.ref.WeakReference;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 
 public class ToDoDateAdapter extends ArrayAdapter<ToDoDateElement> {
-    Context context;
-
     private View.OnClickListener clickListener;
     private View.OnLongClickListener longClickListener;
 
@@ -36,9 +31,8 @@ public class ToDoDateAdapter extends ArrayAdapter<ToDoDateElement> {
         ListView tTimeList;
     }
 
-    public ToDoDateAdapter(ArrayList<ToDoDateElement> tDateElements, Context context) {
-        super(context, R.layout.todo_date_element, tDateElements);
-        this.context = context;
+    public ToDoDateAdapter(ArrayList<ToDoDateElement> tDateElements, WeakReference<Context> context) {
+        super(context.get(), R.layout.todo_date_element, tDateElements);
     }
 
     @NonNull
@@ -125,10 +119,10 @@ public class ToDoDateAdapter extends ArrayAdapter<ToDoDateElement> {
             @SuppressWarnings("unchecked")
             public boolean onLongClick(View v) {
                 AbstractMap.SimpleImmutableEntry<Integer, Integer> indices = (AbstractMap.SimpleImmutableEntry<Integer, Integer>) v.getTag();
-                Intent i = new Intent(context, AddToDoTimeActivity.class);
+                Intent i = new Intent(getContext(), AddToDoTimeActivity.class);
                 i.putExtra("todo_date_index", indices.getKey());
                 i.putExtra("todo_time_index", indices.getValue());
-                context.startActivity(i);
+                getContext().startActivity(i);
                 return true;
             }
         });
