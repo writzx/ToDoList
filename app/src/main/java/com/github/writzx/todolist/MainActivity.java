@@ -10,6 +10,8 @@ import android.widget.ListView;
 
 import org.joda.time.LocalDate;
 import org.joda.time.LocalTime;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -20,6 +22,9 @@ import java.util.Comparator;
 public class MainActivity extends AppCompatActivity {
     public static ArrayList<ToDoDateElement> dateElements = new ArrayList<>();
     public static ToDoDateAdapter adapter;
+
+    public static DateTimeFormatter dateFormat = DateTimeFormat.forPattern("d MMM y");
+    public static DateTimeFormatter timeFormat = DateTimeFormat.forPattern("h:mm a");
 
     FloatingActionButton fab;
     ListView todoView;

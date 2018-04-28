@@ -77,7 +77,7 @@ public class ToDoTimeAdapter extends ArrayAdapter<ToDoTimeElement> implements Vi
             result = convertView;
         }
 
-        holder.tTime.setText(item.getTime().toString("HH:mm")); // todo format
+        holder.tTime.setText(item.getTime().toString(MainActivity.timeFormat));
         holder.tTitle.setText(item.getTitle());
         if (item.isDone()) {
             holder.tDone.setImageResource(R.drawable.ic_done_green);

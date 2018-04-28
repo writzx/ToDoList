@@ -62,7 +62,7 @@ public class ToDoDateAdapter extends ArrayAdapter<ToDoDateElement> {
             result = convertView;
         }
 
-        holder.tDate.setText(item.getDate().toString()); // todo format
+        holder.tDate.setText(item.getDate().toString(MainActivity.dateFormat));
         holder.tTitle.setText(item.getTitle());
 
         holder.tDate.setOnClickListener(clickListener);

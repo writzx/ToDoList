@@ -63,7 +63,7 @@ public class ToDoTimeElement implements Parcelable {
     private ToDoTimeElement(Parcel in) {
         id = in.readLong();
         title = in.readString();
-        time = LocalTime.parse(in.readString());
+        time = LocalTime.parse(in.readString(), MainActivity.timeFormat);
         done = in.readByte() != 0;
     }
 }

@@ -4,7 +4,6 @@ import android.os.Parcel;
 import android.os.Parcelable;
 
 import org.joda.time.LocalDate;
-import org.joda.time.LocalTime;
 
 import java.util.ArrayList;
 
@@ -57,7 +56,7 @@ public class ToDoDateElement implements Parcelable {
 
     @SuppressWarnings("unchecked")
     private ToDoDateElement(Parcel in) {
-        date = LocalDate.parse(in.readString());
+        date = LocalDate.parse(in.readString(), MainActivity.dateFormat);
         title = in.readString();
         todos = new ArrayList<>();
         todos = in.readArrayList(ToDoTimeElement.class.getClassLoader());

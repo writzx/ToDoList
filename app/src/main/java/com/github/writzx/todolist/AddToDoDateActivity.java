@@ -74,12 +74,12 @@ public class AddToDoDateActivity extends AppCompatActivity {
 
         todos = new ArrayList<>();
 
-        dateBox.setText(LocalDate.now().toString());
+        dateBox.setText(LocalDate.now().toString(MainActivity.dateFormat));
 
         if (editIndex != -1) { // edit mode
             todos = MainActivity.dateElements.get(editIndex).todos;
 
-            dateBox.setText(MainActivity.dateElements.get(editIndex).getDate().toString());
+            dateBox.setText(MainActivity.dateElements.get(editIndex).getDate().toString(MainActivity.dateFormat));
             titleBox.setText(MainActivity.dateElements.get(editIndex).getTitle());
 
             deleteBtn.setVisibility(View.VISIBLE);
@@ -123,12 +123,12 @@ public class AddToDoDateActivity extends AppCompatActivity {
         dateBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                LocalDate dt = LocalDate.parse(dateBox.getText().toString());
+                LocalDate dt = LocalDate.parse(dateBox.getText().toString(), MainActivity.dateFormat);
                 DatePickerDialog dpd = new DatePickerDialog(AddToDoDateActivity.this, R.style.DialogTheme, new DatePickerDialog.OnDateSetListener() {
                     @Override
                     public void onDateSet(DatePicker view, int year, int month, int dayOfMonth) {
                         String date = year + "-" + (month + 1) + "-" + dayOfMonth;
-                        dateBox.setText(date);
+                        dateBox.setText(LocalDate.parse(date).toString(MainActivity.dateFormat));
                     }
                 }, dt.getYear(), dt.getMonthOfYear() - 1, dt.getDayOfMonth());
                 dpd.show();
@@ -152,7 +152,7 @@ public class AddToDoDateActivity extends AppCompatActivity {
                 }
 
                 try {
-                    LocalDate.parse(dateBox.getText().toString());
+                    LocalDate.parse(dateBox.getText().toString(), MainActivity.dateFormat);
                 } catch (Exception ex) {
                     Snackbar.make(v, "ERROR: Enter date in correct format...", Snackbar.LENGTH_LONG).show();
                     return;
@@ -164,9 +164,9 @@ public class AddToDoDateActivity extends AppCompatActivity {
                 }
 
                 if (editIndex != -1) {
-                    MainActivity.dateElements.set(editIndex, new ToDoDateElement(LocalDate.parse(dateBox.getText().toString()), titleBox.getText().toString(), todos));
+                    MainActivity.dateElements.set(editIndex, new ToDoDateElement(LocalDate.parse(dateBox.getText().toString(), MainActivity.dateFormat), titleBox.getText().toString(), todos));
                 } else {
-                    MainActivity.dateElements.add(new ToDoDateElement(LocalDate.parse(dateBox.getText().toString()), titleBox.getText().toString(), todos));
+                    MainActivity.dateElements.add(new ToDoDateElement(LocalDate.parse(dateBox.getText().toString(), MainActivity.dateFormat), titleBox.getText().toString(), todos));
                 }
 
                 MainActivity.notifyDataSetChanged();
