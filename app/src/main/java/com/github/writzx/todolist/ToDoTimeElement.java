@@ -7,10 +7,13 @@ import org.joda.time.DateTimeUtils;
 import org.joda.time.LocalTime;
 
 public class ToDoTimeElement implements Parcelable {
-    long id;
-    String title;
-    LocalTime time;
-    boolean done;
+    public long id;
+    public String title;
+    public LocalTime time;
+    public boolean done;
+
+    public ToDoTimeElement() {
+    }
 
     public ToDoTimeElement(String title, LocalTime time, boolean done) {
         id = DateTimeUtils.currentTimeMillis();

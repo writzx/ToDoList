@@ -2,20 +2,33 @@ package com.github.writzx.todolist;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.ListView;
 
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+
 import org.joda.time.LocalDate;
 import org.joda.time.LocalTime;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 
+import java.io.File;
+import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 
@@ -26,12 +39,50 @@ public class MainActivity extends AppCompatActivity {
     public static DateTimeFormatter dateFormat = DateTimeFormat.forPattern("d MMM y");
     public static DateTimeFormatter timeFormat = DateTimeFormat.forPattern("h:mm a");
 
+    public static final String JSON_FILENAME = "data.json";
+    public static ObjectMapper mapper = new ObjectMapper();
+
+    public static Handler handler = new Handler();
+    static File jsonData;
+
     FloatingActionButton fab;
     ListView todoView;
+
+    static {
+        SimpleModule mod = new SimpleModule();
+        mod.addDeserializer(LocalDate.class, new DateDeserializer());
+        mod.addDeserializer(LocalTime.class, new TimeDeserializer());
+        ;
+        mod.addSerializer(LocalDate.class, new DateSerializer());
+        mod.addSerializer(LocalTime.class, new TimeSerializer());
+
+        mapper.registerModule(mod);
+    }
 
     void initViews() {
         todoView = findViewById(R.id.todoView);
         fab = findViewById(R.id.fab);
+    }
+
+    public static void notifyDataSetChanged() {
+        Collections.sort(dateElements, new Comparator<ToDoDateElement>() {
+            @Override
+            public int compare(ToDoDateElement o1, ToDoDateElement o2) {
+                return o1.getDate().compareTo(o2.getDate());
+            }
+        });
+
+        adapter.notifyDataSetChanged();
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    mapper.writeValue(jsonData, dateElements);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }, 100);
     }
 
     @Override
@@ -41,24 +92,39 @@ public class MainActivity extends AppCompatActivity {
 
         initViews();
 
-        ToDoTimeElement t1 = new ToDoTimeElement("FIRST TIME ELEMENT", LocalTime.parse("10:10"), false);
-        ToDoTimeElement t2 = new ToDoTimeElement("SECOND TIME ELEMENT", LocalTime.parse("11:11"), false);
-        ToDoTimeElement t3 = new ToDoTimeElement("THIRD TIME ELEMENT", LocalTime.parse("13:12"), false);
-        ToDoTimeElement t4 = new ToDoTimeElement("FOURTH TIME ELEMENT", LocalTime.parse("17:11"), false);
-        ToDoTimeElement t5 = new ToDoTimeElement("FIFTH TIME ELEMENT", LocalTime.parse("20:10"), false);
+        jsonData = new File(getFilesDir(), JSON_FILENAME);
 
-        ToDoDateElement td1 = new ToDoDateElement(LocalDate.parse("2018-03-18"), "TITLE 1", new ArrayList<>(Arrays.asList(t1, t2, t3, t4, t5)));
+        try {
+            dateElements = mapper.readValue(jsonData, new TypeReference<ArrayList<ToDoDateElement>>() {
+            });
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
-        ToDoTimeElement t21 = new ToDoTimeElement("FIRST TIME ELEMENT", LocalTime.parse("1:10"), false);
-        ToDoTimeElement t22 = new ToDoTimeElement("SECOND TIME ELEMENT", LocalTime.parse("10:10"), false);
-        ToDoTimeElement t23 = new ToDoTimeElement("THIRD TIME ELEMENT", LocalTime.parse("12:10"), false);
-        ToDoTimeElement t24 = new ToDoTimeElement("FOURTH TIME ELEMENT", LocalTime.parse("13:10"), false);
-        ToDoTimeElement t25 = new ToDoTimeElement("FIFTH TIME ELEMENT", LocalTime.parse("14:10"), false);
-        ToDoTimeElement t26 = new ToDoTimeElement("SIXTH TIME ELEMENT", LocalTime.parse("15:10"), false);
-
-        ToDoDateElement td2 = new ToDoDateElement(LocalDate.parse("2018-04-19"), "TITLE 2", new ArrayList<>(Arrays.asList(t21, t22, t23, t24, t25, t26)));
-
-        dateElements = new ArrayList<>(Arrays.asList(td1, td2));
+//        ToDoTimeElement t1 = new ToDoTimeElement("FIRST TIME ELEMENT", LocalTime.parse("10:10"), false);
+//        ToDoTimeElement t2 = new ToDoTimeElement("SECOND TIME ELEMENT", LocalTime.parse("11:11"), false);
+//        ToDoTimeElement t3 = new ToDoTimeElement("THIRD TIME ELEMENT", LocalTime.parse("13:12"), false);
+//        ToDoTimeElement t4 = new ToDoTimeElement("FOURTH TIME ELEMENT", LocalTime.parse("17:11"), false);
+//        ToDoTimeElement t5 = new ToDoTimeElement("FIFTH TIME ELEMENT", LocalTime.parse("20:10"), false);
+//
+//        ToDoDateElement td1 = new ToDoDateElement(LocalDate.parse("2018-03-18"), "TITLE 1", new ArrayList<>(Arrays.asList(t1, t2, t3, t4, t5)));
+//
+//        ToDoTimeElement t21 = new ToDoTimeElement("FIRST TIME ELEMENT", LocalTime.parse("1:10"), false);
+//        ToDoTimeElement t22 = new ToDoTimeElement("SECOND TIME ELEMENT", LocalTime.parse("10:10"), false);
+//        ToDoTimeElement t23 = new ToDoTimeElement("THIRD TIME ELEMENT", LocalTime.parse("12:10"), false);
+//        ToDoTimeElement t24 = new ToDoTimeElement("FOURTH TIME ELEMENT", LocalTime.parse("13:10"), false);
+//        ToDoTimeElement t25 = new ToDoTimeElement("FIFTH TIME ELEMENT", LocalTime.parse("14:10"), false);
+//        ToDoTimeElement t26 = new ToDoTimeElement("SIXTH TIME ELEMENT", LocalTime.parse("15:10"), false);
+//
+//        ToDoDateElement td2 = new ToDoDateElement(LocalDate.parse("2018-04-19"), "TITLE 2", new ArrayList<>(Arrays.asList(t21, t22, t23, t24, t25, t26)));
+//
+//        dateElements = new ArrayList<>(Arrays.asList(td1, td2));
+//
+//        try {
+//            mapper.writeValue(jsonData, dateElements);
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
 
         adapter = new ToDoDateAdapter(dateElements, new WeakReference<>(getApplicationContext()));
         adapter.setOnLongClickListener(new View.OnLongClickListener() {
@@ -87,14 +153,63 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    public static void notifyDataSetChanged() {
-        Collections.sort(dateElements, new Comparator<ToDoDateElement>() {
-            @Override
-            public int compare(ToDoDateElement o1, ToDoDateElement o2) {
-                return o1.getDate().compareTo(o2.getDate());
-            }
-        });
+    public static class TimeSerializer extends StdSerializer<LocalTime> {
+        public TimeSerializer() {
+            this(null);
+        }
 
-        adapter.notifyDataSetChanged();
+        protected TimeSerializer(Class<LocalTime> t) {
+            super(t);
+        }
+
+        @Override
+        public void serialize(LocalTime value, JsonGenerator gen, SerializerProvider provider) throws IOException {
+            gen.writeString(value.toString(MainActivity.timeFormat));
+        }
+    }
+
+    public static class DateSerializer extends StdSerializer<LocalDate> {
+        public DateSerializer() {
+            this(null);
+        }
+
+        protected DateSerializer(Class<LocalDate> t) {
+            super(t);
+        }
+
+        @Override
+        public void serialize(LocalDate value, JsonGenerator gen, SerializerProvider provider) throws IOException {
+            gen.writeString(value.toString(MainActivity.dateFormat));
+        }
+    }
+
+    public static class TimeDeserializer extends StdDeserializer<LocalTime> {
+        public TimeDeserializer() {
+            this(null);
+        }
+
+        protected TimeDeserializer(Class<?> vc) {
+            super(vc);
+        }
+
+        @Override
+        public LocalTime deserialize(JsonParser p, DeserializationContext ctxt) throws IOException, JsonProcessingException {
+            return LocalTime.parse(p.getText(), MainActivity.timeFormat);
+        }
+    }
+
+    public static class DateDeserializer extends StdDeserializer<LocalDate> {
+        public DateDeserializer() {
+            this(null);
+        }
+
+        protected DateDeserializer(Class<?> vc) {
+            super(vc);
+        }
+
+        @Override
+        public LocalDate deserialize(JsonParser p, DeserializationContext ctxt) throws IOException, JsonProcessingException {
+            return LocalDate.parse(p.getText(), MainActivity.dateFormat);
+        }
     }
 }

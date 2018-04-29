@@ -8,9 +8,12 @@ import org.joda.time.LocalDate;
 import java.util.ArrayList;
 
 public class ToDoDateElement implements Parcelable {
-    LocalDate date;
-    String title;
-    ArrayList<ToDoTimeElement> todos;
+    public LocalDate date;
+    public String title;
+    public ArrayList<ToDoTimeElement> todos;
+
+    public ToDoDateElement() {
+    }
 
     public ToDoDateElement(LocalDate date, String title, ArrayList<ToDoTimeElement> todos) {
         this.date = date;
