@@ -1,10 +1,21 @@
 package com.github.writzx.todolist;
 
+import android.app.AlarmManager;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.NotificationManagerCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.ListView;
@@ -19,7 +30,13 @@ import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+import com.google.common.base.Function;
+import com.google.common.base.Joiner;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Multimap;
 
+import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
 import org.joda.time.LocalTime;
 import org.joda.time.format.DateTimeFormat;
@@ -33,6 +50,7 @@ import java.util.Collections;
 import java.util.Comparator;
 
 public class MainActivity extends AppCompatActivity {
+    public static final String CHANNEL_ID = "ToDoTaskNotify";
     public static ArrayList<ToDoDateElement> dateElements = new ArrayList<>();
     public static ToDoDateAdapter adapter;
 
@@ -40,10 +58,15 @@ public class MainActivity extends AppCompatActivity {
     public static DateTimeFormatter timeFormat = DateTimeFormat.forPattern("h:mm a");
 
     public static final String JSON_FILENAME = "data.json";
-    public static ObjectMapper mapper = new ObjectMapper();
+    public static final String NOTIF_FILENAME = "notif.json";
+    public static ObjectMapper MAPPER = new ObjectMapper();
 
-    public static Handler handler = new Handler();
-    static File jsonData;
+    public static Handler HANDLER = new Handler();
+    public static File JSON_DATA;
+    public static File NOTIF_DATA;
+    public static AlarmManager ALARM_MANAGER;
+
+    public static WeakReference<Context> CONTEXT;
 
     FloatingActionButton fab;
     ListView todoView;
@@ -56,7 +79,7 @@ public class MainActivity extends AppCompatActivity {
         mod.addSerializer(LocalDate.class, new DateSerializer());
         mod.addSerializer(LocalTime.class, new TimeSerializer());
 
-        mapper.registerModule(mod);
+        MAPPER.registerModule(mod);
     }
 
     void initViews() {
@@ -73,16 +96,110 @@ public class MainActivity extends AppCompatActivity {
         });
 
         adapter.notifyDataSetChanged();
-        handler.postDelayed(new Runnable() {
+        HANDLER.postDelayed(new Runnable() {
             @Override
             public void run() {
                 try {
-                    mapper.writeValue(jsonData, dateElements);
+                    MAPPER.writeValue(JSON_DATA, dateElements);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
         }, 100);
+        saveNotifications();
+    }
+
+    public static void saveNotifications() {
+        // read all saved notifications
+        ArrayList<Notification> notifs = new ArrayList<>();
+        try {
+            notifs = MAPPER.readValue(NOTIF_DATA, new TypeReference<ArrayList<Notification>>() {
+            });
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+
+        try {
+            ArrayList<Notification> newNotifs = new ArrayList<>();
+            Multimap<Integer, Integer> oldPairs = ArrayListMultimap.create();
+
+            if (notifs.size() > 0) {
+                ArrayList<Integer> doneNotifs = new ArrayList<>();
+
+                for (int k = 0; k < dateElements.size(); k++) {
+                    ToDoDateElement tde = dateElements.get(k);
+                    for (int j = 0; j < tde.todos.size(); j++) {
+                        ToDoTimeElement tte = tde.todos.get(j);
+                        for (int i = 0; i < notifs.size(); i++) {
+                            if (doneNotifs.contains(i)) continue;
+                            Notification nf = notifs.get(i);
+                            if (tte.id == nf.id) {
+                                if (tde.date != nf.date || tte.time != nf.time) {
+                                    // cancel the old one
+                                    Intent alarmIntent = new Intent(CONTEXT.get(), AlarmReceiver.class);
+                                    alarmIntent.setData(Uri.parse("todo://" + tde.date + "/" + tte.time + "/" + tte.id));
+                                    alarmIntent.setAction(String.valueOf(tte.id));
+
+                                    PendingIntent dispInt = PendingIntent.getBroadcast(CONTEXT.get(), 0, alarmIntent, 0);
+
+                                    ALARM_MANAGER.cancel(dispInt);
+
+                                    nf.time = tte.time;
+                                    nf.date = tde.date;
+
+                                    // re-add a new one
+                                    long millis = nf.date.toLocalDateTime(nf.time).toDateTime().getMillis();
+
+                                    ALARM_MANAGER.setExact(AlarmManager.RTC_WAKEUP, millis, dispInt);
+
+                                }
+                                newNotifs.add(nf);
+                                doneNotifs.add(i);
+                                oldPairs.put(k, j);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            for (int i = 0; i < dateElements.size(); i++) {
+                ToDoDateElement tde = dateElements.get(i);
+                for (int j = 0; j < tde.todos.size(); j++) {
+                    ToDoTimeElement tte = tde.todos.get(j);
+                    // exclude adding already present notifications
+                    if (!oldPairs.get(i).contains(j)) {
+                        // new notification, add to list
+                        Notification nf = new Notification();
+                        nf.id = tte.id;
+                        nf.date = tde.date;
+                        nf.time = tte.time;
+
+                        // add the notification alarm
+                        Intent alarmIntent = new Intent(CONTEXT.get(), AlarmReceiver.class);
+                        alarmIntent.setData(Uri.parse("todo://" + tde.date + "/" + tte.time + "/" + tte.id));
+                        alarmIntent.setAction(String.valueOf(tte.id));
+
+                        PendingIntent dispInt = PendingIntent.getBroadcast(CONTEXT.get(), 0, alarmIntent, 0);
+
+                        long millis = nf.date.toLocalDateTime(nf.time).toDateTime().getMillis();
+                        ALARM_MANAGER.setExact(AlarmManager.RTC_WAKEUP, millis, dispInt);
+
+                        DateTime dt = new DateTime(millis);
+                        System.out.println(millis + "\t" + dt.toString(MainActivity.dateFormat) + "\n" + dt.toString(MainActivity.timeFormat));
+
+                        dt = new DateTime(System.currentTimeMillis());
+                        System.out.println(System.currentTimeMillis() + "\t" + dt.toString(MainActivity.dateFormat) + "\n" + dt.toString(MainActivity.timeFormat));
+
+                        newNotifs.add(nf);
+                    }
+                }
+            }
+
+            MAPPER.writeValue(NOTIF_DATA, newNotifs);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -92,10 +209,40 @@ public class MainActivity extends AppCompatActivity {
 
         initViews();
 
-        jsonData = new File(getFilesDir(), JSON_FILENAME);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            String name = "Task Reminders";
+            String description = "Reminders associated with every task in the ToDo List";
+            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, NotificationManager.IMPORTANCE_HIGH);
+            channel.setDescription(description);
+            NotificationManager notificationManager = (NotificationManager) this.getSystemService(Context.NOTIFICATION_SERVICE);
+            assert notificationManager != null;
+            notificationManager.createNotificationChannel(channel);
+        }
+
+        JSON_DATA = new File(getFilesDir(), JSON_FILENAME);
+        NOTIF_DATA = new File(getFilesDir(), NOTIF_FILENAME);
+
+        if (!JSON_DATA.exists()) {
+            try {
+                JSON_DATA.createNewFile();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        if (!NOTIF_DATA.exists()) {
+            try {
+                NOTIF_DATA.createNewFile();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        ALARM_MANAGER = (AlarmManager) getSystemService(ALARM_SERVICE);
+        CONTEXT = new WeakReference<>(getApplicationContext());
 
         try {
-            dateElements = mapper.readValue(jsonData, new TypeReference<ArrayList<ToDoDateElement>>() {
+            dateElements = MAPPER.readValue(JSON_DATA, new TypeReference<ArrayList<ToDoDateElement>>() {
             });
         } catch (IOException e) {
             e.printStackTrace();
@@ -121,7 +268,7 @@ public class MainActivity extends AppCompatActivity {
 //        dateElements = new ArrayList<>(Arrays.asList(td1, td2));
 //
 //        try {
-//            mapper.writeValue(jsonData, dateElements);
+//            MAPPER.writeValue(jsonData, dateElements);
 //        } catch (IOException e) {
 //            e.printStackTrace();
 //        }
@@ -151,6 +298,51 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(i);
             }
         });
+    }
+
+    public static class AlarmReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            long id = Long.valueOf(intent.getAction());
+            ToDoDateElement tde = null;
+            ToDoTimeElement tte = null;
+            for (int k = 0; k < dateElements.size(); k++) {
+                tde = dateElements.get(k);
+                for (int j = 0; j < tde.todos.size(); j++) {
+                    tte = tde.todos.get(j);
+                    if (tte.id == id) {
+                        break;
+                    }
+                }
+            }
+
+            if (tde == null || tte == null) return;
+
+            NotificationCompat.Builder builder = new NotificationCompat.Builder(CONTEXT.get(), CHANNEL_ID)
+                    .setContentTitle(tde.date.toString(MainActivity.dateFormat) + "\t" + tde.title)
+                    .setContentText(tte.time.toString(MainActivity.timeFormat) + "\t" + tte.title)
+                    .setPriority(NotificationCompat.PRIORITY_MAX)
+                    .setSmallIcon(R.drawable.ic_doneall_green)
+                    .setStyle(new NotificationCompat.BigTextStyle().bigText(Joiner.on("\n").join(
+                            Iterables.transform(tde.todos,
+                                    new Function<ToDoTimeElement, String>() {
+                                        @Override
+                                        public String apply(@NonNull ToDoTimeElement input) {
+                                            return input.time.toString(MainActivity.timeFormat) + "\t" + input.title;
+                                        }
+                                    })))); // todo set tap action
+
+            NotificationManagerCompat nm = NotificationManagerCompat.from(MainActivity.CONTEXT.get());
+
+            nm.notify((int) tte.id, builder.build());
+            System.out.println(System.currentTimeMillis());
+        }
+    }
+
+    public static class Notification {
+        long id;
+        LocalDate date;
+        LocalTime time;
     }
 
     public static class TimeSerializer extends StdSerializer<LocalTime> {
