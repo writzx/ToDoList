@@ -28,10 +28,6 @@
             android:theme="@style/DialogTheme"
             android:excludeFromRecents="true"
             android:screenOrientation="portrait"/>
-
-        <receiver
-            android:name=".MainActivity$AlarmReceiver"
-            android:enabled="true" />
     </application>
 
 </manifest>

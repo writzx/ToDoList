@@ -3,20 +3,13 @@ package com.github.writzx.todolist;
 import android.app.AlarmManager;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
-import android.app.PendingIntent;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
-import android.support.v4.app.NotificationCompat;
-import android.support.v4.app.NotificationManagerCompat;
-import android.support.v4.util.LongSparseArray;
-import android.support.v4.util.Pair;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.ListView;
@@ -101,130 +94,6 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         }, 100);
-        regAndSaveNotifications();
-    }
-
-    public static void regAndSaveNotifications() {
-        ArrayList<Notification> notifs = new ArrayList<>();
-        ArrayList<Notification> newNotifs = new ArrayList<>();
-
-        try {
-            notifs = MAPPER.readValue(NOTIF_DATA, new TypeReference<ArrayList<Notification>>() {
-            });
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        LongSparseArray<Pair<ToDoTimeElement, ToDoDateElement>> todos = new LongSparseArray<>();
-        ArrayList<Long> doneIDs = new ArrayList<>();
-
-        for (ToDoDateElement td : dateElements) {
-            for (ToDoTimeElement tt : td.todos) {
-                todos.put(tt.id, Pair.create(tt, td));
-            }
-        }
-
-        for (Notification nf : notifs) {
-            Pair<ToDoTimeElement, ToDoDateElement> pair = todos.get(nf.id);
-
-            if (pair == null || !(pair.first.time.equals(nf.time) && pair.second.date.equals(nf.date))) {
-                cancelAlarm(nf);
-
-                if (pair == null) continue;
-
-                nf.time = pair.first.time;
-                nf.date = pair.second.date;
-                setAlarm(nf);
-            }
-
-            if (!pair.first.done) {
-                newNotifs.add(nf);
-                doneIDs.add(nf.id);
-            }
-        }
-
-        for (int i = 0; i < todos.size(); i++) {
-            long id = todos.keyAt(i);
-            ToDoTimeElement tte = todos.valueAt(i).first;
-            ToDoDateElement tde = todos.valueAt(i).second;
-
-            if (doneIDs.contains(id)) {
-                continue;
-            }
-
-            if (!tte.done) {
-                newNotifs.add(new Notification(tte.id, tde.date, tte.time));
-                setAlarm(new Notification(id, tde.date, tte.time));
-            }
-        }
-
-        try {
-            MAPPER.writeValue(NOTIF_DATA, newNotifs);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    static void setAlarm(Notification nf) {
-        Intent alarmIn = new Intent(CONTEXT.get(), AlarmReceiver.class);
-
-        ToDoDateElement tde = null;
-        ToDoTimeElement tte = null;
-        for (int k = 0; k < dateElements.size(); k++) {
-            tde = dateElements.get(k);
-            for (int j = 0; j < tde.todos.size(); j++) {
-                tte = tde.todos.get(j);
-                if (tte.id == nf.id) {
-                    break;
-                }
-            }
-        }
-
-        Bundle b = new Bundle();
-
-        b.putLong("TODO_ID", nf.id);
-        b.putParcelable("TODO_TIME", tte);
-        b.putParcelable("TODO_DATE", tde);
-
-        alarmIn.putExtras(b);
-
-        alarmIn.setData(Uri.parse("todo://" + nf.id));
-        alarmIn.setAction(String.valueOf(nf.id));
-
-        PendingIntent disIndent = PendingIntent.getBroadcast(CONTEXT.get(), (int) nf.id, alarmIn, PendingIntent.FLAG_UPDATE_CURRENT);
-
-        long millis = nf.date.toLocalDateTime(nf.time).toDateTime().getMillis();
-        ALARM_MANAGER.setExact(AlarmManager.RTC_WAKEUP, millis, disIndent);
-    }
-
-    static void cancelAlarm(Notification nf) {
-        Intent alarmIn = new Intent(CONTEXT.get(), AlarmReceiver.class);
-        ToDoDateElement tde = null;
-        ToDoTimeElement tte = null;
-        for (int k = 0; k < dateElements.size(); k++) {
-            tde = dateElements.get(k);
-            for (int j = 0; j < tde.todos.size(); j++) {
-                tte = tde.todos.get(j);
-                if (tte.id == nf.id) {
-                    break;
-                }
-            }
-        }
-
-        Bundle b = new Bundle();
-
-        b.putLong("TODO_ID", nf.id);
-        b.putParcelable("TODO_TIME", tte);
-        b.putParcelable("TODO_DATE", tde);
-
-        alarmIn.putExtras(b);
-
-        alarmIn.setData(Uri.parse("todo://" + nf.id));
-        alarmIn.setAction(String.valueOf(nf.id));
-
-        PendingIntent disIndent = PendingIntent.getBroadcast(CONTEXT.get(), (int) nf.id, alarmIn, PendingIntent.FLAG_UPDATE_CURRENT);
-
-        ALARM_MANAGER.cancel(disIndent);
     }
 
     @Override
@@ -323,59 +192,6 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(i);
             }
         });
-    }
-
-    public static class AlarmReceiver extends BroadcastReceiver {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            Bundle b = intent.getExtras();
-            long id = -1;
-            ToDoTimeElement tte = null;
-            ToDoDateElement tde = null;
-            if (b != null) {
-                id = b.getLong("TODO_ID");
-                tde = b.getParcelable("TODO_DATE");
-                tte = b.getParcelable("TODO_TIME");
-
-            }
-
-            if (id == -1) return;
-            if (tde == null || tte == null) return;
-
-            NotificationCompat.Builder builder = new NotificationCompat.Builder(CONTEXT.get(), CHANNEL_ID)
-                    .setContentTitle(tde.date.toString(MainActivity.dateFormat) + "\t" + tde.title)
-                    .setContentText(tte.time.toString(MainActivity.timeFormat) + "\t" + tte.title)
-                    .setPriority(NotificationCompat.PRIORITY_MAX)
-                    .setSmallIcon(R.drawable.ic_doneall_green)
-                    /*.setStyle(new NotificationCompat.BigTextStyle().bigText(Joiner.on("\n").join(
-                            Iterables.transform(tde.todos,
-                                    new Function<ToDoTimeElement, String>() {
-                                        @Override
-                                        public String apply(@NonNull ToDoTimeElement input) {
-                                            return input.time.toString(MainActivity.timeFormat) + "\t" + input.title;
-                                        }
-                                    }))))*/; // todo set tap action
-
-            NotificationManagerCompat nm = NotificationManagerCompat.from(MainActivity.CONTEXT.get());
-
-            nm.notify((int) tte.id, builder.build());
-            System.out.println("ALARM >>  " + System.currentTimeMillis());
-        }
-    }
-
-    public static class Notification {
-        long id;
-        LocalDate date;
-        LocalTime time;
-
-        public Notification() {
-        }
-
-        public Notification(long id, LocalDate date, LocalTime time) {
-            this.id = id;
-            this.date = date;
-            this.time = time;
-        }
     }
 
     public static class TimeSerializer extends StdSerializer<LocalTime> {
