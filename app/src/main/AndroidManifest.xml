@@ -28,6 +28,10 @@
             android:theme="@style/DialogTheme"
             android:excludeFromRecents="true"
             android:screenOrientation="portrait"/>
+
+        <receiver
+            android:name=".AlarmReceiver"
+            android:exported="true" />
     </application>
 
 </manifest>

@@ -8,9 +8,13 @@ import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
+import android.text.Spannable;
+import android.text.SpannableStringBuilder;
+import android.text.style.StyleSpan;
 import android.view.View;
 import android.widget.ListView;
 
@@ -24,7 +28,11 @@ import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+import com.google.common.base.Function;
+import com.google.common.base.Joiner;
+import com.google.common.collect.Iterables;
 
+import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
 import org.joda.time.LocalTime;
 import org.joda.time.format.DateTimeFormat;
@@ -37,22 +45,25 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 
+import static android.graphics.Typeface.BOLD;
+
 public class MainActivity extends AppCompatActivity {
     public static final String CHANNEL_ID = "ToDoTaskNotify";
-    public static ArrayList<ToDoDateElement> dateElements = new ArrayList<>();
-    public static ToDoDateAdapter adapter;
+    public static final String NOTIF_DATA_PARAM = "Notif_Data";
 
     public static DateTimeFormatter dateFormat = DateTimeFormat.forPattern("d MMM y");
     public static DateTimeFormatter timeFormat = DateTimeFormat.forPattern("h:mm a");
 
     public static final String JSON_FILENAME = "data.json";
     public static final String NOTIF_FILENAME = "notif.json";
-    public static ObjectMapper MAPPER = new ObjectMapper();
+    public static final ObjectMapper MAPPER = new ObjectMapper();
 
     public static Handler HANDLER = new Handler();
     public static File JSON_DATA;
     public static File NOTIF_DATA;
     public static AlarmManager ALARM_MANAGER;
+    public static ArrayList<ToDoDateElement> dateElements = new ArrayList<>();
+    public static ToDoDateAdapter adapter;
 
     public static WeakReference<Context> CONTEXT;
 
@@ -92,8 +103,67 @@ public class MainActivity extends AppCompatActivity {
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
+                regNotifs();
             }
         }, 100);
+    }
+
+    public static void regNotifs() {
+        ArrayList<Notif> notifs = new ArrayList<>();
+        try {
+            notifs = MAPPER.readValue(NOTIF_DATA, new TypeReference<ArrayList<Notif>>() {
+            });
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // cancel all old notifs
+        for (Notif n : notifs) {
+            n.cancel();
+        }
+
+        ArrayList<Notif> newNotifs = createNotifArray();
+
+        // set all new notifs if there is time
+        for (Notif n : newNotifs) {
+            if (n.date.toLocalDateTime(n.time).toDateTime().isAfter(DateTime.now())) {
+                n.set();
+            }
+        }
+    }
+
+    public static ArrayList<Notif> createNotifArray() {
+        final ArrayList<Notif> nfs = new ArrayList<>();
+
+        for (final ToDoDateElement tde : dateElements) {
+            for (int i = 0; i < tde.todos.size(); i++) {
+                final ToDoTimeElement tte = tde.todos.get(i);
+
+                final int[] span = {-1, -1};
+
+                final CharSequence desc = Joiner.on("\n").join(Iterables.transform(tde.todos, new Function<ToDoTimeElement, String>() {
+                    @Override
+                    public String apply(@NonNull ToDoTimeElement input) {
+                        String ret = input.time.toString(MainActivity.timeFormat) + "    " + input.title;
+                        if (!input.time.equals(tte.time) && span[1] < 0) {
+                            span[0] += ret.length();
+                            span[1] = 1;
+                        }
+                        return ret;
+                    }
+                }));
+
+                SpannableStringBuilder sp = new SpannableStringBuilder(desc);
+
+                if (span[0] > -1) {
+                    sp.setSpan(new StyleSpan(BOLD), span[0], span[0] + tte.title.length(), Spannable.SPAN_INCLUSIVE_INCLUSIVE);
+                }
+
+                nfs.add(new Notif(tte.id, tde.date.toString(MainActivity.dateFormat) + "    " + tde.title, tte.time.toString(MainActivity.timeFormat) + "    " + tte.title, sp, tde.date, tte.time));
+            }
+        }
+
+        return nfs;
     }
 
     @Override
@@ -194,6 +264,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    ///region serializer/deserializer
     public static class TimeSerializer extends StdSerializer<LocalTime> {
         public TimeSerializer() {
             this(null);
@@ -253,4 +324,5 @@ public class MainActivity extends AppCompatActivity {
             return LocalDate.parse(p.getText(), MainActivity.dateFormat);
         }
     }
+    ///endregion
 }
