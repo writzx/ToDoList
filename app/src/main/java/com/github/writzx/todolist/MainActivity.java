@@ -12,9 +12,7 @@ import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
-import android.text.Spannable;
 import android.text.SpannableStringBuilder;
-import android.text.style.StyleSpan;
 import android.view.View;
 import android.widget.ListView;
 
@@ -45,8 +43,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 
-import static android.graphics.Typeface.BOLD;
-
 public class MainActivity extends AppCompatActivity {
     public static final String CHANNEL_ID = "ToDoTaskNotify";
     public static final String NOTIF_DATA_PARAM = "Notif_Data";
@@ -63,6 +59,8 @@ public class MainActivity extends AppCompatActivity {
     public static File NOTIF_DATA;
     public static AlarmManager ALARM_MANAGER;
     public static ArrayList<ToDoDateElement> dateElements = new ArrayList<>();
+    public static ArrayList<Notif> notifs = new ArrayList<>();
+
     public static ToDoDateAdapter adapter;
 
     public static WeakReference<Context> CONTEXT;
@@ -109,26 +107,16 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public static void regNotifs() {
-        ArrayList<Notif> notifs = new ArrayList<>();
-        try {
-            notifs = MAPPER.readValue(NOTIF_DATA, new TypeReference<ArrayList<Notif>>() {
-            });
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
         // cancel all old notifs
         for (Notif n : notifs) {
             n.cancel();
         }
 
-        ArrayList<Notif> newNotifs = createNotifArray();
+        notifs = createNotifArray();
 
         // set all new notifs if there is time
-        for (Notif n : newNotifs) {
-            if (n.date.toLocalDateTime(n.time).toDateTime().isAfter(DateTime.now())) {
-                n.set();
-            }
+        for (Notif n : notifs) {
+            n.set();
         }
     }
 
@@ -139,27 +127,18 @@ public class MainActivity extends AppCompatActivity {
             for (int i = 0; i < tde.todos.size(); i++) {
                 final ToDoTimeElement tte = tde.todos.get(i);
 
-                final int[] span = {-1, -1};
-
-                final CharSequence desc = Joiner.on("\n").join(Iterables.transform(tde.todos, new Function<ToDoTimeElement, String>() {
-                    @Override
-                    public String apply(@NonNull ToDoTimeElement input) {
-                        String ret = input.time.toString(MainActivity.timeFormat) + "    " + input.title;
-                        if (!input.time.equals(tte.time) && span[1] < 0) {
-                            span[0] += ret.length();
-                            span[1] = 1;
+                if (tde.date.toLocalDateTime(tte.time).toDateTime().isAfter(DateTime.now())) {
+                    final CharSequence desc = Joiner.on("\n").join(Iterables.transform(tde.todos, new Function<ToDoTimeElement, String>() {
+                        @Override
+                        public String apply(@NonNull ToDoTimeElement input) {
+                            return input.time.toString(MainActivity.timeFormat) + "    " + input.title;
                         }
-                        return ret;
-                    }
-                }));
+                    })); // todo setspan
 
-                SpannableStringBuilder sp = new SpannableStringBuilder(desc);
+                    SpannableStringBuilder sp = new SpannableStringBuilder(desc);
 
-                if (span[0] > -1) {
-                    sp.setSpan(new StyleSpan(BOLD), span[0], span[0] + tte.title.length(), Spannable.SPAN_INCLUSIVE_INCLUSIVE);
+                    nfs.add(new Notif(tte.id, tde.date.toString(MainActivity.dateFormat) + "    " + tde.title, tte.time.toString(MainActivity.timeFormat) + "    " + tte.title, sp, tde.date, tte.time));
                 }
-
-                nfs.add(new Notif(tte.id, tde.date.toString(MainActivity.dateFormat) + "    " + tde.title, tte.time.toString(MainActivity.timeFormat) + "    " + tte.title, sp, tde.date, tte.time));
             }
         }
 
@@ -207,6 +186,8 @@ public class MainActivity extends AppCompatActivity {
 
         try {
             dateElements = MAPPER.readValue(JSON_DATA, new TypeReference<ArrayList<ToDoDateElement>>() {
+            });
+            notifs = MAPPER.readValue(NOTIF_DATA, new TypeReference<ArrayList<Notif>>() {
             });
         } catch (IOException e) {
             e.printStackTrace();

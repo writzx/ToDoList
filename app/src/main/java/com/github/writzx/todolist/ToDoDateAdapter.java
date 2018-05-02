@@ -78,7 +78,7 @@ public class ToDoDateAdapter extends ArrayAdapter<ToDoDateElement> {
                 if (!expanding && !rotating) {
                     expanding = rotating = true;
                     if (holder.tTimeList.getVisibility() == View.VISIBLE) {
-                        ValueAnimator expander = UIUtils.getExpandAnimator(holder.tTimeList, false);
+                        ValueAnimator expander = Utils.getExpandAnimator(holder.tTimeList, false);
                         expander.addListener(new AnimatorListenerAdapter() {
                             @Override
                             public void onAnimationEnd(Animator animation) {
@@ -94,7 +94,7 @@ public class ToDoDateAdapter extends ArrayAdapter<ToDoDateElement> {
 
                         expander.start();
                     } else {
-                        ValueAnimator expander = UIUtils.getExpandAnimator(holder.tTimeList, true);
+                        ValueAnimator expander = Utils.getExpandAnimator(holder.tTimeList, true);
                         expander.addListener(new AnimatorListenerAdapter() {
                             @Override
                             public void onAnimationEnd(Animator animation) {
@@ -133,7 +133,7 @@ public class ToDoDateAdapter extends ArrayAdapter<ToDoDateElement> {
             }
         });
         holder.tTimeList.setAdapter(adapter);
-        UIUtils.setListViewHeightBasedOnItems(holder.tTimeList);
+        Utils.setListViewHeightBasedOnItems(holder.tTimeList);
 
         holder.tExpand.setTag(position);
         holder.tDate.setTag(position);
